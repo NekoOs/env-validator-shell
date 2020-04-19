@@ -1,3 +1,6 @@
+[Español](https://github.com/NekoOs/env-validator-shell/blob/master/readme/ES.md) · 
+[Ingles](https://github.com/NekoOs/env-validator-shell/blob/master/README.md)
+
 Env Validator Shell <br><small>Validador para fichero de configuración de variables de entorno</small>
 =================================
 Este es un script que permite validar la configuración de variables de entorno de un archivo 
