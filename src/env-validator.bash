@@ -170,31 +170,46 @@ function validate_key_with_rule() {
   case ${rule} in
   required)
     validate_key_with_rule_for_required "$key"
+    code=$?
     ;;
   boolean)
     validate_key_with_rule_for_boolean "$key"
+    code=$?
     ;;
   integer)
     validate_key_with_rule_for_integer "$key"
+    code=$?
     ;;
   decimal)
-    validate_key_with_rule_for_decimal "$key" "$option"
+    validate_key_with_rule_for_decimal "$key"
+    code=$?
     ;;
   numeric)
-    validate_key_with_rule_for_numeric "$key" "$option"
+    validate_key_with_rule_for_numeric "$key"
+    code=$?
     ;;
   min)
     validate_key_with_rule_for_min "$key" "$option"
+    code=$?
     ;;
   max)
     validate_key_with_rule_for_max "$key" "$option"
+    code=$?
+    ;;
+  regexp)
+    validate_key_with_rule_for_regexp "$key" "$option"
+    code=$?
     ;;
   esac
+
+  return ${code}
 }
 
 function validate_keys_with_rules_from_file
 {
-    types=(required integer decimal max)
+    local code=0
+    local types=(required integer decimal max regexp)
+
     NEKOOS_ENV_FILE=${1:-'.env'}
     NEKOOS_ENV_RULES=${2:-'.env.rules'}
 
@@ -202,6 +217,11 @@ function validate_keys_with_rules_from_file
       grep -oP "[\w].*=.*\b$type\b[^\n]*" ${NEKOOS_ENV_RULES} | while IFS='=' read -r key rules; do
         option=$(extract_option_rule "$rules" "$type")
         validate_key_with_rule "$key" "$type" "$option"
+        if [[ $? -ne 0 ]]; then
+            code=$?
+        fi
       done
     done
+    echo
+    return ${code}
 }
