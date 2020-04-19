@@ -46,6 +46,39 @@ function print_line_style()
     echo
 }
 
+
+function test_validate()
+{
+    local code
+    local expected=$1
+    local closure=$2
+    local parameters=${@:3}
+    local message
+    local mute
+
+    message=$(${closure} ${parameters})
+
+    print_style "test sentence " blue
+    print_style "→ " info
+    print_style "$closure" orange
+    print_line_style "(`sed s/\s/,/g <<< ${parameters}`) "
+
+
+    if [[ "$message" == "$expected" ]]; then
+        code=0
+        print_line_style "result: OK" success
+        NEKOOS_TEST_DONE_COUNTER=$((${NEKOOS_TEST_DONE_COUNTER}+1))
+    else
+        code=1
+        NEKOOS_TEST_FAIL_COUNTER=$((${NEKOOS_TEST_FAIL_COUNTER}+1))
+        print_line_style "result: FAIL" danger
+        print_line_style "expect: $expected" danger
+        print_line_style "actual: $message" danger
+    fi
+
+    return ${code}
+}
+
 # TESTING FOR  VALIDATION OF REQUIRED
 
 test_validate 'The key VAR_REQUIRED_UNDEFINED is required'       validate_key_with_rule_for_required VAR_REQUIRED_UNDEFINED

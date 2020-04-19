@@ -161,3 +161,47 @@ function validate_key_with_rule_for_required() {
 
   return ${code}
 }
+
+function validate_key_with_rule() {
+  local key=$1
+  local rule=$2
+  local option=$3
+
+  case ${rule} in
+  required)
+    validate_key_with_rule_for_required "$key"
+    ;;
+  boolean)
+    validate_key_with_rule_for_boolean "$key"
+    ;;
+  integer)
+    validate_key_with_rule_for_integer "$key"
+    ;;
+  decimal)
+    validate_key_with_rule_for_decimal "$key" "$option"
+    ;;
+  numeric)
+    validate_key_with_rule_for_numeric "$key" "$option"
+    ;;
+  min)
+    validate_key_with_rule_for_min "$key" "$option"
+    ;;
+  max)
+    validate_key_with_rule_for_max "$key" "$option"
+    ;;
+  esac
+}
+
+function validate_keys_with_rules_from_file
+{
+    types=(required integer decimal max)
+    NEKOOS_ENV_FILE=${1:-'.env'}
+    NEKOOS_ENV_RULES=${2:-'.env.rules'}
+
+    for type in "${types[@]}"; do
+      grep -oP "[\w].*=.*\b$type\b[^\n]*" ${NEKOOS_ENV_RULES} | while IFS='=' read -r key rules; do
+        option=$(extract_option_rule "$rules" "$type")
+        validate_key_with_rule "$key" "$type" "$option"
+      done
+    done
+}
