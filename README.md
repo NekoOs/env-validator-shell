@@ -42,6 +42,24 @@ see a [sample rule configuration file](https://github.com/NekoOs/env-validator-s
 validate_keys_with_rules_from_file /path/to/.env /path/to/.env.rules
 ```
 
+### Example
+imagine that you want to validate that your `.env` file contains some variables and even check the value of these.
+Then you create an `.env.rules` file as follows:
+
+```dotenv
+APP_URL=required
+MN_DB_PORT=required|integer
+```
+
+Then if the `.env` and `.env.rules` files are in the same directory from where you execute the function, 
+then it would be enough:
+
+```bash
+validate_keys_with_rules_from_file
+```
+
+Otherwise, you can define the paths of the files as shown [above](#validation-from-file)
+
 Available validation rules
 --------------------------------
 
