@@ -207,21 +207,23 @@ function validate_key_with_rule() {
 
 function validate_keys_with_rules_from_file
 {
-    local code=0
+    local fails=0
     local types=(required integer decimal max regexp)
 
     NEKOOS_ENV_FILE=${1:-'.env'}
     NEKOOS_ENV_RULES=${2:-'.env.rules'}
 
     for type in "${types[@]}"; do
-      grep -oP "[\w].*=.*\b$type\b[^\n]*" ${NEKOOS_ENV_RULES} | while IFS='=' read -r key rules; do
+      file=$(grep -oP "[\w].*=.*\b$type\b[^\n]*" ${NEKOOS_ENV_RULES})
+      if [[ $? -eq 0 ]]; then
+        while IFS='=' read -r key rules; do
         option=$(extract_option_rule "$rules" "$type")
         validate_key_with_rule "$key" "$type" "$option"
         if [[ $? -ne 0 ]]; then
-            code=$?
+            fails=$((fails+1))
         fi
-      done
+      done <<< "$file"
+      fi
     done
-    echo
-    return ${code}
+    return ${fails}
 }
