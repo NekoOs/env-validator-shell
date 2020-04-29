@@ -4,15 +4,16 @@ NEKOOS_ENV_FILE='.env'
 NEKOOS_ENV_RULES='.env.rules'
 NEKOOS_EMPTY=''
 
+read -r -d '' NEKOOS_SPLIT_RULES<<-'EOF'
+\w+:"([^"]*)"|\w+:'([^']*)'|[^|]+
+EOF
+
 function extract_option_rule() {
   rules=$1
   type=$2
 
-  IFS='|'
-  for rule in ${rules}; do
-    echo "$rule" | grep -oP ".*:.*" | while IFS=':' read -r key option; do
-      echo "$option"
-    done
+  echo "$rules" | egrep -o "$NEKOOS_SPLIT_RULES" | egrep -o ".*:.*" | while IFS=':' read -r key option; do
+      echo "$option" | grep -oP '(?<=")\K([^"]+)(?=")'
   done
 }
 
@@ -26,7 +27,7 @@ function extract_value() {
   local rule
   local response
 
-  rule=$(grep -oP "^$key=.*$" ${NEKOOS_ENV_FILE})
+  rule=$(egrep -o "^$key=.*$" ${NEKOOS_ENV_FILE})
   response=$?
 
   while IFS='=' read -r key value; do
@@ -93,7 +94,7 @@ function validate_key_with_rule_for_regexp() {
 
   value=$(extract_value "$key")
 
-  grep -oP "$pattern" <<<"$value" >/dev/null 2>&1
+  egrep -o "$pattern" <<<"$value" >/dev/null 2>&1
   code=$?
 
   if [[ ${code} -ne 0 && "$value" != '' ]]; then
@@ -107,7 +108,7 @@ function validate_key_with_rule_for_integer() {
   local code
   local key=$1
 
-  content=$(validate_key_with_rule_for_regexp "$key" '^\d+([|])?$')
+  content=$(validate_key_with_rule_for_regexp "$key" '^[0-9]+([|])?$')
   code=$?
 
   if [[ ${code} -ne 0 && "$content" != '' ]]; then
@@ -122,7 +123,7 @@ function validate_key_with_rule_for_numeric() {
   local code
   local key=$1
 
-  content=$(validate_key_with_rule_for_regexp "$key" '^\d+(\.\d*)?$')
+  content=$(validate_key_with_rule_for_regexp "$key" '^[0-9]+(\.[0-9]*)?$')
   code=$?
 
   if [[ ${code} -ne 0 && "$content" != '' ]]; then
@@ -137,7 +138,7 @@ function validate_key_with_rule_for_decimal() {
   local code
   local key=$1
 
-  content=$(validate_key_with_rule_for_regexp "$key" "^\d+\.\d+$")
+  content=$(validate_key_with_rule_for_regexp "$key" "^[0-9]+\.[0-9]+$")
   code=$?
 
   if [[ ${code} -ne 0 && "$content" != '' ]]; then
@@ -157,6 +158,35 @@ function validate_key_with_rule_for_required() {
 
   if [[ ${code} -ne 0 ]]; then
     printf 'The key %s is required\n' "$key"
+  fi
+
+  return ${code}
+}
+
+function validate_key_with_rule_for_url() {
+  local code
+  local key=$1
+
+  content=$(validate_key_with_rule_for_regexp "$key" '^(http:\/\/www\.|https:\/\/www\.|http:\/\/|https:\/\/)?[a-z0-9]+([\-\.]{1}[a-z0-9]+)*\.[a-z]{2,5}(:[0-9]{1,5})?(\/.*)?|^((http:\/\/www\.|https:\/\/www\.|http:\/\/|https:\/\/)?([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(:[0-9]{1,5})?(\/.*)?$')
+  code=$?
+
+  if [[ ${code} -ne 0 ]]; then
+    printf 'The key %s is not url\n' "$key"
+  fi
+
+  return ${code}
+}
+
+function validate_key_with_rule_for_email() {
+  local code
+  local email_pattern
+  local key=$1
+
+  content=$(validate_key_with_rule_for_regexp "$key" '[a-zA-Z0-9.-]+@[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)')
+  code=$?
+
+  if [[ ${code} -ne 0 ]]; then
+    printf 'The key %s is not email\n' "$key"
   fi
 
   return ${code}
@@ -196,6 +226,14 @@ function validate_key_with_rule() {
     validate_key_with_rule_for_max "$key" "$option"
     code=$?
     ;;
+  url)
+    validate_key_with_rule_for_url "$key"
+    code=$?
+    ;;
+  email)
+    validate_key_with_rule_for_email "$key"
+    code=$?
+    ;;
   regexp)
     validate_key_with_rule_for_regexp "$key" "$option"
     code=$?
@@ -208,13 +246,13 @@ function validate_key_with_rule() {
 function validate_keys_with_rules_from_file
 {
     local fails=0
-    local types=(required integer decimal max regexp)
+    local types=(required integer decimal max regexp url email)
 
     NEKOOS_ENV_FILE=${1:-'.env'}
     NEKOOS_ENV_RULES=${2:-'.env.rules'}
 
     for type in "${types[@]}"; do
-      file=$(grep -oP "[\w].*=.*\b$type\b[^\n]*" ${NEKOOS_ENV_RULES})
+      file=$(grep -oP "\w.*=.*\b$type\b[^\n]*" "$NEKOOS_ENV_RULES")
       if [[ $? -eq 0 ]]; then
         while IFS='=' read -r key rules; do
         option=$(extract_option_rule "$rules" "$type")
